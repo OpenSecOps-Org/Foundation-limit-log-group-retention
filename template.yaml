@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  OrgAccountId:
+    Type: String
+    Description: The account number of the Organization account
+    Default: '111111111111'
+
+  CrossAccountRole:
+    Type: String
+    Description: Use AWSControlTowerExecution with Control Tower, OrganizationAccountAccessRole with AWS Organizations.
+    Default: AWSControlTowerExecution
+
+Globals:
+  Function:
+    Runtime: python3.9
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Timeout: 900
+
+Description: >
+  limit-log-group-retention
+
+  Sets the retention time of all CloudWatch LogGroups with infinite retention to two weeks.
+
+Resources:
+  LimitLogGroupRetention:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/limit-log-group-retention.asl.json
+      DefinitionSubstitutions:
+        GetOrganizationAccountListFunctionArn: !GetAtt GetOrganizationAccountListFunction.Arn
+        GetRegionsFunctionArn: !GetAtt GetRegionsFunction.Arn
+        GetLogGroupsFunctionArn: !GetAtt GetLogGroupsFunction.Arn
+        ProcessLogGroupsFunctionArn: !GetAtt ProcessLogGroupsFunction.Arn
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Description: Schedule to run the logic at midnight UTC every day
+            Enabled: True
+            Schedule: 'cron(0 0 * * ? *)'
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetOrganizationAccountListFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetRegionsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetLogGroupsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessLogGroupsFunction
+
+  GetOrganizationAccountListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_organization_account_list/
+      Policies:
+        - Statement:
+            - Sid: OrganizationPermissions
+              Effect: Allow
+              Action:
+                - organizations:ListAccounts
+              Resource: '*'
+
+  GetLogGroupsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_log_groups/
+      Policies:
+        - Statement:
+            - Sid: AssumeTheRole
+              Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: !Sub 'arn:aws:iam::*:role/${CrossAccountRole}'
+            - Sid: CloudWatchLogsPermissions
+              Effect: Allow
+              Action:
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Environment:
+        Variables:
+          ORG_ACCOUNT_ID: !Ref OrgAccountId
+          CROSS_ACCOUNT_ROLE: !Ref CrossAccountRole
+
+  GetRegionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_regions/
+      MemorySize: 160
+      Policies:
+        - Statement:
+            - Sid: AssumeTheRole
+              Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: !Sub 'arn:aws:iam::*:role/${CrossAccountRole}'
+            - Sid: EC2Permissions
+              Effect: Allow
+              Action:
+                - ec2:DescribeRegions
+              Resource: '*'
+      Environment:
+        Variables:
+          ORG_ACCOUNT_ID: !Ref OrgAccountId
+          CROSS_ACCOUNT_ROLE: !Ref CrossAccountRole
+
+  ProcessLogGroupsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/process_log_groups/
+      Policies:
+        - Statement:
+            - Sid: AssumeTheRole
+              Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: !Sub 'arn:aws:iam::*:role/${CrossAccountRole}'
+            - Sid: CloudWatchLogsPermissions
+              Effect: Allow
+              Action:
+                - logs:PutRetentionPolicy
+              Resource: '*'
+      Environment:
+        Variables:
+          ORG_ACCOUNT_ID: !Ref OrgAccountId
+          CROSS_ACCOUNT_ROLE: !Ref CrossAccountRole

@@ -1,0 +1,113 @@
+{
+    "Comment": "A state machine that sets the retention time of unlimited Log Groups to two weeks.",
+    "StartAt": "Get Organization Account List",
+    "States": {
+        "Get Organization Account List": {
+            "Type": "Task",
+            "Resource": "${GetOrganizationAccountListFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 5,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "ResultPath": "$.Accounts",
+            "Next": "In each member account"
+        },
+        "In each member account": {
+            "Type": "Map",
+            "ItemsPath": "$.Accounts",
+            "Parameters": {
+                "Account.$": "$$.Map.Item.Value"
+            },
+            "MaxConcurrency": 0,
+            "Iterator": {
+                "StartAt": "Is the account active?",
+                "States": {
+                    "Is the account active?": {
+                        "Type": "Choice",
+                        "Choices": [
+                            {
+                                "Variable": "$.Account.Status",
+                                "StringEquals": "ACTIVE",
+                                "Next": "Get Region List"
+                            }
+                        ],
+                        "Default": "Disabled, do nothing"
+                    },
+                    "Get Region List": {
+                        "Type": "Task",
+                        "Resource": "${GetRegionsFunctionArn}",
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "States.TaskFailed"
+                                ],
+                                "IntervalSeconds": 5,
+                                "MaxAttempts": 5,
+                                "BackoffRate": 1.5
+                            }
+                        ],
+                        "ResultPath": "$.Regions",
+                        "Next": "Process Region"
+                    },
+                    "Process Region": {
+                        "Type": "Map",
+                        "ItemsPath": "$.Regions",
+                        "Parameters": {
+                            "Account.$": "$.Account.Id",
+                            "Region.$": "$$.Map.Item.Value.RegionName"
+                        },
+                        "MaxConcurrency": 0,
+                        "Iterator": {
+                            "StartAt": "Get LogGroup list for Region",
+                            "States": {
+                                "Get LogGroup list for Region": {
+                                    "Type": "Task",
+                                    "Resource": "${GetLogGroupsFunctionArn}",
+                                    "Retry": [
+                                        {
+                                            "ErrorEquals": [
+                                                "States.TaskFailed"
+                                            ],
+                                            "IntervalSeconds": 5,
+                                            "MaxAttempts": 5,
+                                            "BackoffRate": 1.5
+                                        }
+                                    ],
+                                    "ResultPath": "$.LogGroups",
+                                    "Next": "Process them"
+                                },
+                                "Process them": {
+                                    "Type": "Task",
+                                    "Resource": "${ProcessLogGroupsFunctionArn}",
+                                    "Retry": [
+                                        {
+                                            "ErrorEquals": [
+                                                "States.TaskFailed"
+                                            ],
+                                            "IntervalSeconds": 5,
+                                            "MaxAttempts": 5,
+                                            "BackoffRate": 1.5
+                                        }
+                                    ],
+                                    "End": true
+                                }
+                            }
+                        },
+                        "End": true
+                    },
+                    "Disabled, do nothing": {
+                        "Type": "Pass",
+                        "End": true
+                    }
+                }
+            },
+            "End": true
+        }
+    }
+}

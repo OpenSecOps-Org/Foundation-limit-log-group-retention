@@ -1,0 +1,10 @@
+# Deployment configuration
+
+repo-name    = "Foundation-limit-log-group-retention"
+part-of      = 'foundation'
+
+
+[SAM]
+stack-name   = "INFRA-limit-log-group-retention"
+profile      = "admin-account"
+regions      = '{main-region}'
