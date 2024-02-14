@@ -127,3 +127,38 @@ Resources:
         Variables:
           ORG_ACCOUNT_ID: !Ref OrgAccountId
           CROSS_ACCOUNT_ROLE: !Ref CrossAccountRole
+
+
+  #-------------------------------------------------------------------------------
+  #
+  # Monitoring. Only the state machines should be monitored as they
+  # orchestrate the lambda functions which are expected to fail in certain
+  # circumstances without this generating an incident.
+  #
+  # These CloudWatch alarms conform to the naming conventions used by the
+  # logic defined in the "all-alarms-to-sec-hub" SAM project. This will
+  # automatically create incidents and tickets in ServiceNow or Jira.
+  #
+  #-------------------------------------------------------------------------------
+
+  AlarmASFFProcessor:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: INFRA-LimitLogGroupRetention-SM-Failure-LOW
+      AlarmDescription: The LimitLogGroupRetention state machine failed.
+      ActionsEnabled: true
+      OKActions: []
+      AlarmActions: []
+      InsufficientDataActions: []
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Statistic: Sum
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref LimitLogGroupRetention
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching

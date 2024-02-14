@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.0.4
+    * Added SOAR monitoring of the state machine.
+
 ## v1.0.3
     * Refreshed deployment scripts.
 
