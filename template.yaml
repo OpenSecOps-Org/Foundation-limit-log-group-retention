@@ -141,7 +141,7 @@ Resources:
   #
   #-------------------------------------------------------------------------------
 
-  AlarmASFFProcessor:
+  AlarmLimitLogGroupRetention:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: INFRA-LimitLogGroupRetention-SM-Failure-LOW

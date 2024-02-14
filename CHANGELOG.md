@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.0.5
+    * Corrected the alarm logical name.
+
 ## v1.0.4
     * Added SOAR monitoring of the state machine.
 
