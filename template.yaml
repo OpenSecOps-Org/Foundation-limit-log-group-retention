@@ -15,7 +15,7 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: python3.12
     MemorySize: 128
     Handler: app.lambda_handler
     Timeout: 900

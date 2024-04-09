@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.0.6
+    * Upgraded to Python 3.12.
+    * Added `.python-version` file for pyenv.
+
 ## v1.0.5
     * Corrected the alarm logical name.
 
