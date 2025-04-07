@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.0.10
+    * Updated GitHub organization name from CloudSecOps-Org to OpenSecOps-Org.
+    * Updated references to CloudSecOps-Installer to Installer.
+
 ## v1.0.9
     * File paths corrected for the new name of the installer.
 
