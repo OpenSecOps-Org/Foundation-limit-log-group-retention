@@ -1,3 +1,7 @@
+# Limit Log Group Retention
+
+[![Daily CVE scan](https://github.com/OpenSecOps-Org/Foundation-limit-log-group-retention/actions/workflows/daily-scan.yml/badge.svg)](https://github.com/OpenSecOps-Org/Foundation-limit-log-group-retention/actions/workflows/daily-scan.yml) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/OpenSecOps-Org/Foundation-limit-log-group-retention/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenSecOps-Org/Foundation-limit-log-group-retention)
+
 Deploy as a Stack in the Organization account, in the main region.
 
 The template has two parameters:

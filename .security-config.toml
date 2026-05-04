@@ -1,0 +1,4 @@
+component_name = "Foundation-limit-log-group-retention"
+converted = true
+converted_in = "v1.1.0"
+acknowledged_cves = []
