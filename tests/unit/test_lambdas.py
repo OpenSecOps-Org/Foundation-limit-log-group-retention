@@ -4,6 +4,7 @@ machine retries. Other errors keep their own name and are not retried, except in
 a log group that cannot be updated for another reason is logged and the others are still processed.
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
@@ -80,11 +81,36 @@ def test_get_regions_errors(error, expected):
     assert isinstance(raised.value, AWSTransientError) == (expected is AWSTransientError)
 
 
+def log_groups_client(*pages):
+    logs = MagicMock()
+    logs.get_paginator.return_value.paginate.return_value = [{'logGroups': page} for page in pages]
+    return logs
+
+
+def test_get_log_groups_reads_every_page_and_returns_the_names_without_retention():
+    logs = log_groups_client([{'logGroupName': 'a', 'storedBytes': 1}, {'logGroupName': 'b', 'retentionInDays': 30}],
+                             [{'logGroupName': 'c', 'arn': 'arn:c'}])
+    assert run(get_log_groups, {'Account': MEMBER, 'Region': 'eu-north-1'}, logs) == [
+        {'logGroupName': 'a'}, {'logGroupName': 'c'}]
+    logs.get_paginator.assert_called_once_with('describe_log_groups')
+
+
+def test_get_log_groups_stays_within_the_state_machine_payload_limit(capsys):
+    """Long names: the rest is picked up by the next daily run."""
+    names = [f'{i:04d}' + 'x' * 500 for i in range(1000)]
+    logs = log_groups_client([{'logGroupName': name} for name in names])
+    result = run(get_log_groups, {'Account': MEMBER, 'Region': 'eu-north-1'}, logs)
+    assert len(json.dumps(result)) <= get_log_groups.PAYLOAD_BUDGET
+    assert 0 < len(result) < len(names)
+    assert result == [{'logGroupName': name} for name in names[:len(result)]]
+    assert 'next run' in capsys.readouterr().out
+
+
 @pytest.mark.parametrize('error, expected', [(THROTTLE, AWSTransientError),
                                              (DENIED, botocore.exceptions.ClientError)])
 def test_get_log_groups_errors(error, expected):
     logs = MagicMock()
-    logs.describe_log_groups.side_effect = error
+    logs.get_paginator.return_value.paginate.side_effect = error
     with pytest.raises(expected) as raised:
         run(get_log_groups, {'Account': MEMBER, 'Region': 'eu-north-1'}, logs)
     assert isinstance(raised.value, AWSTransientError) == (expected is AWSTransientError)

@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.2.1
+    * Fix: only the first page of an account's log groups in each region (50 at most) was ever looked at, so log groups beyond it never got a retention setting. `get_log_groups` now reads every page. It passes on only the log groups without a retention setting, by name, and at most about 200 KB of them per account and region, within the state machine's 256 KB limit; any more are set in the following daily runs.
+
 ## v1.2.0
     * Retries are now driven by named errors. The Lambdas raise throttling, AWS-side failures (5xx) and connection problems as `AWSTransientError`, keeping the original error as its cause, through the `aws_errors` module (distributed by the Installer, packaged in the new `AwsErrorsLayer`). The state machine retries `AWSTransientError` and the Lambda service errors: 5 seconds, doubling, at most 300 seconds apart, full jitter, 20 attempts. It no longer retries on `States.TaskFailed`, which matched every error, permanent ones included.
     * Fix: a throttled retention update was logged and skipped until the next scheduled run. It is now retried; a log group refused for another reason is still logged and the others are processed.

@@ -1,4 +1,5 @@
 import os
+import json
 import boto3
 from aws_errors import transient_aws_errors
 
@@ -6,6 +7,9 @@ sts_client = boto3.client('sts')
 
 ORG_ACCOUNT_ID = os.environ['ORG_ACCOUNT_ID']
 CROSS_ACCOUNT_ROLE = os.environ['CROSS_ACCOUNT_ROLE']
+
+# The list passes through the state machine, whose state data is limited to 256 KB
+PAYLOAD_BUDGET = 200_000
 
 
 @transient_aws_errors
@@ -19,9 +23,21 @@ def lambda_handler(data, _context):
     client = get_appropriate_client(
         'logs', account_id, region, CROSS_ACCOUNT_ROLE)
 
-    response = client.describe_log_groups()
+    # Only the log groups without a retention setting, and only their names
+    result = []
+    size = 2
+    for page in client.get_paginator('describe_log_groups').paginate():
+        for log_group in page['logGroups']:
+            if 'retentionInDays' in log_group:
+                continue
+            entry = {'logGroupName': log_group['logGroupName']}
+            size += len(json.dumps(entry)) + 2
+            if size > PAYLOAD_BUDGET:
+                print(f"{len(result)} log groups this run; the rest will be processed in the next run")
+                return result
+            result.append(entry)
 
-    return response['logGroups']
+    return result
 
 
 def get_appropriate_client(client_type, account_id, region, role=CROSS_ACCOUNT_ROLE):
