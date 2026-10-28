@@ -1,5 +1,6 @@
 import os
 import boto3
+from aws_errors import transient_aws_errors
 
 sts_client = boto3.client('sts')
 
@@ -7,6 +8,7 @@ ORG_ACCOUNT_ID = os.environ['ORG_ACCOUNT_ID']
 CROSS_ACCOUNT_ROLE = os.environ['CROSS_ACCOUNT_ROLE']
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
 
     print(data)

@@ -19,6 +19,8 @@ Globals:
     MemorySize: 128
     Handler: app.lambda_handler
     Timeout: 900
+    Layers:
+      - !Ref AwsErrorsLayer
 
 Description: >
   limit-log-group-retention
@@ -26,6 +28,16 @@ Description: >
   Sets the retention time of all CloudWatch LogGroups with infinite retention to two weeks.
 
 Resources:
+  # aws_errors.py (distributed by Installer/refresh): the named errors the state machine retries
+  AwsErrorsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: Named errors for state machine retries (AWSTransientError)
+      ContentUri: functions/layers/aws_errors/
+      CompatibleRuntimes:
+        - python3.12
+      RetentionPolicy: Retain
+
   LimitLogGroupRetention:
     Type: AWS::Serverless::StateMachine
     Properties:

@@ -1,5 +1,6 @@
 import os
 import boto3
+from aws_errors import is_transient, transient_aws_errors
 
 sts_client = boto3.client('sts')
 
@@ -7,6 +8,7 @@ ORG_ACCOUNT_ID = os.environ['ORG_ACCOUNT_ID']
 CROSS_ACCOUNT_ROLE = os.environ['CROSS_ACCOUNT_ROLE']
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
 
     account_id = data['Account']
@@ -37,6 +39,8 @@ def process_log_group(client, log_group):
             retentionInDays=14
         )
     except Exception as e:
+        if is_transient(e):
+            raise  # throttling: the state machine retries the batch (setting retention again is harmless)
         print(f"Error in updating log group '{log_group_name}': {e}")
         return
     print(f"Updated log group '{log_group_name}' to retain data for 14 days")
